@@ -32,7 +32,7 @@ int loop(spi_inst_t * const spi_connection, const unsigned int led_pin, const un
                                                     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
                                                     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
     const uint8_t key_data[RPMC_KEY_DATA_LENGTH] = {0x00, 0x00, 0x00, 0x00}; 
-    const uint8_t target_counter = 0;
+    const uint8_t target_counter = 1;
 
     uint8_t hmac_key_register[RPMC_HMAC_KEY_LENGTH];
     if (mbedtls_md_hmac(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), root_key, RPMC_HMAC_KEY_LENGTH, key_data, RPMC_KEY_DATA_LENGTH, hmac_key_register)) {
@@ -54,18 +54,18 @@ int loop(spi_inst_t * const spi_connection, const unsigned int led_pin, const un
     printf("Start counter value %u for counter %u\n", curr_counter_value, target_counter);
 
     time_t start_time = time(NULL);
-    while (curr_counter_value < 4000000000U) {
+    while (curr_counter_value < UINT32_MAX) {
         if (increment_counter(spi_connection, cs_pin, target_counter, hmac_key_register, curr_counter_value)) {
             printf("Error: increment failed at counter value %u for counter %u\n", curr_counter_value, target_counter);
-            return 1;
+            continue;
         }
 
         const uint32_t next_counter_value = curr_counter_value + 1;
-        if (((next_counter_value) / 10000) > (curr_counter_value / 10000)) {
+        if ((next_counter_value / 10000) > (curr_counter_value / 10000)) {
             toggle_led(led_pin);
         }
 
-        if (((next_counter_value) / 1000000) > (curr_counter_value / 1000000)) {
+        if ((next_counter_value / 1000000) > (curr_counter_value / 1000000)) {
             const time_t next_time = time(NULL);
             printf("Incrementing the counter to %u took %lf seconds\n", next_counter_value, difftime(next_time, start_time));
             start_time = next_time;
@@ -87,7 +87,7 @@ int main()
         return 1;
     }
     
-    spi_init(spi0, 1U * 1000 * 1000);
+    spi_init(spi0, 50U * 1000 * 1000);
     gpio_set_function(PICO_DEFAULT_SPI_RX_PIN, GPIO_FUNC_SPI);
     gpio_set_function(PICO_DEFAULT_SPI_SCK_PIN, GPIO_FUNC_SPI);
     gpio_set_function(PICO_DEFAULT_SPI_TX_PIN, GPIO_FUNC_SPI);
